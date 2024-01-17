@@ -82,4 +82,31 @@ defmodule ExProc do
   # iex(16)> ExProc.receive_calc
   # Timeout !!
   # :ok
+
+  # iex(23)> account_id = ExProc.create_account
+  # #PID<0.181.0>
+  # iex(24)> send account_id, {:add, 10}
+  # old value 0  new value 10
+  # {:add, 10}
+  # iex(25)> send account_id, {:add, 10}
+  # old value 10  new value 20
+  # {:add, 10}
+  # iex(26)> send account_id, {:withraw, 10}
+  # old value 20  new value 10
+  # {:withraw, 10}
+  def create_account, do: spawn(__MODULE__, :state_receive, [0])
+
+  def state_receive(money) do
+    receive do
+      {:add, value} ->
+        new_value = money + value
+        IO.puts("old value #{money}  new value #{new_value}")
+        state_receive(new_value)
+
+      {:withraw, value} ->
+        new_value = money - value
+        IO.puts("old value #{money}  new value #{new_value}")
+        state_receive(new_value)
+    end
+  end
 end
