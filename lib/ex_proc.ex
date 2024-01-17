@@ -109,4 +109,86 @@ defmodule ExProc do
         state_receive(new_value)
     end
   end
+
+  def create_connection_db, do: spawn(__MODULE__, :execute_connection, [:rand.uniform(3_000)])
+
+  def execute_connection(conn_db) do
+    receive do
+      {:execute_query, from, query} ->
+        result = execute_query(conn_db, query)
+        send(from, {:print_result, result})
+    end
+
+    # Calling same method again to keep the process alive
+    execute_connection(conn_db)
+  end
+
+  defp execute_query(conn_db, query) do
+    :timer.sleep(2_000)
+    "Connection #{conn_db} executed: #{query}"
+  end
+
+  def print_result do
+    receive do
+      {:print_result, result} -> result
+    after
+      5_000 -> "Something went wrong."
+    end
+  end
+
+  def call_query(server, query) do
+    send(server, {:execute_query, self(), query})
+  end
+
+  #   iex(29)> conn = ExProc.create_connection_db
+  # #PID<0.189.0>
+  # iex(30)> ExProc.call_query conn, "Select * from products"
+  # {:execute_query, #PID<0.134.0>, "Select * from products"}
+  # iex(31)> ExProc.print_result
+  # "Connection 2170 executed: Select * from products"
+  # iex(32)> ExProc.call_query conn, "Select * from products as p"
+  # {:execute_query, #PID<0.134.0>, "Select * from products as p"}
+  # iex(33)> ExProc.print_result
+  # "Connection 2170 executed: Select * from products as p"
+  # iex(34)> 1..10 |> Enum.map(&ExProc.call_query(conn, "select #{&1}"))
+  # [  NOTICE THE SAME PID
+  #   {:execute_query, #PID<0.134.0>, "select 1"},
+  #   {:execute_query, #PID<0.134.0>, "select 2"},
+  #   {:execute_query, #PID<0.134.0>, "select 3"},
+  #   {:execute_query, #PID<0.134.0>, "select 4"},
+  #   {:execute_query, #PID<0.134.0>, "select 5"},
+  #   {:execute_query, #PID<0.134.0>, "select 6"},
+  #   {:execute_query, #PID<0.134.0>, "select 7"},
+  #   {:execute_query, #PID<0.134.0>, "select 8"},
+  #   {:execute_query, #PID<0.134.0>, "select 9"},
+  #   {:execute_query, #PID<0.134.0>, "select 10"}
+  # ]
+  # iex(35)> 1..10 |> Enum.map( fn _ -> ExProc.print_result end)
+  # ["Connection 2170 executed: select 1", "Connection 2170 executed: select 2",
+  #  "Connection 2170 executed: select 3", "Connection 2170 executed: select 4",
+  #  "Connection 2170 executed: select 5", "Connection 2170 executed: select 6",
+  #  "Connection 2170 executed: select 7", "Connection 2170 executed: select 8",
+  #  "Connection 2170 executed: select 9", "Connection 2170 executed: select 10"]
+  # NOTICE THE SAME PID ABOVE
+
+  #  iex(37)> 1..10 |> Enum.map(&ExProc.call_query(ExProc.create_connection_db, "select #{&1}"))
+  # [ NOTICE THE SAME PID
+  #   {:execute_query, #PID<0.134.0>, "select 1"},
+  #   {:execute_query, #PID<0.134.0>, "select 2"},
+  #   {:execute_query, #PID<0.134.0>, "select 3"},
+  #   {:execute_query, #PID<0.134.0>, "select 4"},
+  #   {:execute_query, #PID<0.134.0>, "select 5"},
+  #   {:execute_query, #PID<0.134.0>, "select 6"},
+  #   {:execute_query, #PID<0.134.0>, "select 7"},
+  #   {:execute_query, #PID<0.134.0>, "select 8"},
+  #   {:execute_query, #PID<0.134.0>, "select 9"},
+  #   {:execute_query, #PID<0.134.0>, "select 10"}
+  # ]
+  # iex(38)> 1..10 |> Enum.map( fn _ -> ExProc.print_result end)
+  # ["Connection 387 executed: select 1", "Connection 86 executed: select 2",
+  #  "Connection 2199 executed: select 3", "Connection 616 executed: select 4",
+  #  "Connection 2965 executed: select 5", "Connection 2799 executed: select 6",
+  #  "Connection 1542 executed: select 7", "Connection 2746 executed: select 8",
+  #  "Connection 414 executed: select 9", "Connection 2899 executed: select 10"]
+  # NOTICE THE DIFFERENT PID ABOVE
 end
