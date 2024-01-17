@@ -40,4 +40,46 @@ defmodule ExProc do
     async = &spawn(fn -> IO.puts(execute.(&1)) end)
     1..n |> Enum.map(&async.(&1))
   end
+
+  #   iex(1)> ExProc.send_calc(10,20)
+  # {:sum, 10, 20}
+
+  def send_calc(type, number_1, number_2) do
+    send(self(), {type, number_1, number_2})
+  end
+
+  #   iex(2)> ExProc.receive_calc
+  # 30
+  def receive_calc do
+    receive do
+      {:sum, number_1, number_2} -> number_1 + number_2
+      {:div, number_1, number_2} -> number_1 / number_2
+      {:mul, number_1, number_2} -> number_1 * number_2
+      {:sub, number_1, number_2} -> number_1 - number_2
+    after
+      5000 -> IO.puts("Timeout !!")
+    end
+  end
+
+  # iex(7)> ExProc.send_calc :sum, 10, 20
+  # {:sum, 10, 20}
+  # iex(8)> ExProc.receive_calc
+  # 30
+  # iex(9)> ExProc.send_calc :sub, 100, 20
+  # {:sub, 100, 20}
+  # iex(10)> ExProc.receive_calc
+  # 80
+  # iex(11)> ExProc.send_calc :mul, 10, 20
+  # {:mul, 10, 20}
+  # iex(12)> ExProc.receive_calc
+  # 200
+  # iex(13)> ExProc.send_calc :div, 20, 10
+  # {:div, 20, 10}
+  # iex(14)> ExProc.receive_calc
+  # 2.0
+  # iex(15)> ExProc.send_calc :divv, 20, 10
+  # {:divv, 20, 10}
+  # iex(16)> ExProc.receive_calc
+  # Timeout !!
+  # :ok
 end
